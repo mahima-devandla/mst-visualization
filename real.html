@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prim's and Kruskal's Algorithm Visualization</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style type="text/css">
+        #mynetwork {
+            background-color: black;
+            width: 1200px;
+            height: 400px;
+            border: 1px solid rgb(229, 5, 249);
+        }
+
+        /* Base button styles */
+        .cool-button {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+
+        .cool-button:hover {
+            opacity: 0.8;
+        }
+
+        .kb {
+            background-color: #ffc107;
+            /* Yellow */
+            color: #212529;
+        }
+
+        .pb {
+            background-color: #28a745;
+            /* Green */
+            color: #fff;
+        }
+
+        #pb {
+            display: flex;
+            justify-content: center;
+        }
+
+        #kb {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>MST Visualization</h1>
+    <div id="mynetwork"></div>
+    <script type="text/javascript">
+        var nodes = new vis.DataSet([]);
+        var edges = new vis.DataSet([]);
+
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {
+            layout: {
+                hierarchical: false
+            },
+            physics: {
+                enabled: false
+            }
+        };
+        var network = new vis.Network(container, data, options);
+
+        network.on('click', function (params) {
+            var clickedNodeId = network.getNodeAt(params.pointer.DOM);
+            if (clickedNodeId === undefined) {
+                // If no node is clicked, add a new node
+                var id = nodes.length + 1;
+                var label = id.toString();
+                var x = params.pointer.canvas.x;
+                var y = params.pointer.canvas.y;
+                nodes.add({ id: id, label: label, x: x, y: y });
+            } else {
+                // If a node is clicked, add an edge
+                var fromNodeId = clickedNodeId;
+                network.once('click', function (params) {
+                    var toNodeId = network.getNodeAt(params.pointer.DOM);
+                    if (toNodeId !== undefined && fromNodeId !== toNodeId) {
+                        // If another node is clicked (and it's not the same node), prompt for weight
+                        var weight = prompt('Enter weight for the edge:');
+                        if (!isNaN(weight)) {
+                            // If a valid weight is entered, add the edge
+                            var edgeId = edges.length + 1;
+                            edges.add({ id: edgeId, from: fromNodeId, to: toNodeId, label: weight, weight: parseFloat(weight) });
+                        } else {
+                            // If an invalid weight is entered, show an alert
+                            alert('Please enter a valid number for the weight.');
+                        }
+                    }
+                });
+            }
+        });
+
+        function runPrims() {
+            // Initialize arrays for storing visited nodes and selected edges
+            var visited = [];
+            var selectedEdges = [];
+
+            // Start from a random node
+            var startNodeId = nodes.getIds()[0]; // Start from the first node
+            visited.push(startNodeId);
+
+            // Repeat until all nodes are visited
+            while (visited.length < nodes.length) {
+                var minEdge = { from: null, to: null, weight: Infinity };
+
+                // Find the minimum weight edge connecting a visited node to an unvisited node
+                edges.forEach(function (edge) {
+                    if ((visited.includes(edge.from) && !visited.includes(edge.to)) ||
+                        (!visited.includes(edge.from) && visited.includes(edge.to))) {
+                        if (edge.weight < minEdge.weight) {
+                            minEdge = edge;
+                        }
+                    }
+                });
+
+                // Mark the new node as visited and add the selected edge to the minimum spanning tree
+                if (!visited.includes(minEdge.from)) {
+                    visited.push(minEdge.from);
+                } else {
+                    visited.push(minEdge.to);
+                }
+                selectedEdges.push(minEdge);
+            }
+
+            // Highlight selected edges
+            edges.update(selectedEdges.map(function (edge) {
+                return { id: edge.id, color: 'green' };
+            }));
+        }
+
+        function runKruskals() {
+            // Sort edges by weight
+            var sortedEdges = edges.get().sort(function (a, b) {
+                return a.weight - b.weight;
+            });
+
+            // Initialize arrays for storing visited nodes and selected edges
+            var visited = [];
+            var selectedEdges = [];
+
+            // Create a disjoint set data structure
+            var parent = [];
+            for (var i = 0; i < nodes.length + 1; i++) {
+                parent.push(i);
+            }
+
+            // Find the parent of a set
+            function find(x) {
+                if (parent[x] !== x) {
+                    parent[x] = find(parent[x]);
+                }
+                return parent[x];
+            }
+
+            // Merge two sets
+            function merge(x, y) {
+                parent[find(x)] = find(y);
+            }
+
+            // Iterate through sorted edges and add to minimum spanning tree if no cycle is formed
+            sortedEdges.forEach(function (edge) {
+                if (find(edge.from) !== find(edge.to)) {
+                    selectedEdges.push(edge);
+                    merge(edge.from, edge.to);
+                }
+            });
+
+            // Highlight selected edges
+            edges.update(selectedEdges.map(function (edge) {
+                return { id: edge.id, color: 'orange' };
+            }));
+        }
+    </script>
+    <div id="pb"><button class="cool-button pb" onclick="runPrims()">Prim's Algorithm</button></div>
+    <div id="kb"><button class="cool-button kb" onclick="runKruskals()">Kruskal's Algorithm</button></div>
+</body>
+
+</html>
